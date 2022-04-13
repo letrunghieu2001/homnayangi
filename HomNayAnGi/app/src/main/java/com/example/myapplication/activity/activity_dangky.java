@@ -8,12 +8,16 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.myapplication.R;
 import com.example.myapplication.data_model.user;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 public class activity_dangky extends AppCompatActivity {
 
@@ -51,11 +55,38 @@ public class activity_dangky extends AppCompatActivity {
                     } else {
                         user user = new user(username.getText().toString(), password.getText().toString(), name.getText().toString(), address.getText().toString(), phone.getText().toString());
                         DatabaseReference db = FirebaseDatabase.getInstance().getReference();
-                        db.child("account").child(username.getText().toString()).setValue(user);
-                        db.child("favorite").child(user.getUsername()).setValue("");
-                        Toast.makeText(activity_dangky.this, "Đăng ký thành công", Toast.LENGTH_LONG).show();
-                        Intent intent = new Intent(activity_dangky.this, activity_login.class);
-                        startActivity(intent);
+                        ValueEventListener username_check=new ValueEventListener() {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                int count=0;
+                                for (DataSnapshot postSnapshot: snapshot.getChildren()) {
+                                    user user_check=postSnapshot.getValue(com.example.myapplication.data_model.user.class);
+                                    if(user.getUsername().equals(user_check.getUsername()))
+                                    {
+                                        count++;
+                                        break;
+                                    }};
+                                if(count==1) {
+                                    Toast.makeText(activity_dangky.this, "Tên đăng nhập đã tồn tại", Toast.LENGTH_SHORT).show();
+                                }
+                                else {
+                                    db.child("account").child(username.getText().toString()).setValue(user);
+                                    db.child("favorite").child(user.getUsername()).setValue("");
+                                    Toast.makeText(activity_dangky.this, "Đăng ký thành công", Toast.LENGTH_SHORT).show();
+                                    Intent intent = new Intent(activity_dangky.this, activity_login.class);
+                                    db.child("account").removeEventListener(this);
+                                    startActivity(intent);
+
+                                }
+                            }
+
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError error) {
+
+                            }
+                        };
+                        db.child("account").addValueEventListener(username_check);
+
                     }
                 }
             }
